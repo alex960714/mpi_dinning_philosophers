@@ -10,46 +10,9 @@ TState *states = NULL;
 int *priority;
 int rank, size;
 
-void Test(int i)
+void eat(int index)//, double hun_time)
 {
-	if (states[i] == HUNGRY && states[LEFT] != EATING && states[RIGHT] != EATING)
-	{
-		//if (priority[i] >= priority[LEFT] && priority[i] >= priority[RIGHT])
-		//{
-			states[i] = EATING;
-			priority[i] = 0;
-		//}
-		//else
-		//{
-			/*if (priority[i] < priority[LEFT] && priority[LEFT] >= priority[RIGHT])
-				GetForks(LEFT);
-			else if (priority[i] < priority[RIGHT])
-				GetForks(RIGHT);
-			priority[i]++;*/
-		//}
-	}
-}
-
-void GetForks(int i)
-{
-	states[i] = HUNGRY;
-	Test(i);
-	if (states[i] == EATING)
-		MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
-}
-
-void PutForks(int i)
-{
-	states[i] = THINKING;
-	if (states[LEFT] == HUNGRY)
-		GetForks(LEFT);
-	if (states[RIGHT] == HUNGRY)
-		GetForks(RIGHT);
-}
-
-void eat(int index, double hun_time)
-{
-	printf("Philosopher %d starts to eat. He was hungry for %f seconds\n", index, hun_time);
+	printf("Philosopher %d starts to eat\n", index);// , hun_time);
 	Sleep(rand() % 3000 + 1500);
 	printf("Philosopher %d has finished to eat\n", index);
 }
@@ -59,6 +22,47 @@ void think(int index)
 	printf("Philosopher %d is thinking\n", index);
 	Sleep(rand() % 3000 + 1500);
 	printf("Philosopher %d is hungry\n", index);
+}
+
+void Test(int i)
+{
+	if (states[i] == HUNGRY && states[LEFT] != EATING && states[RIGHT] != EATING)
+	{
+		if (priority[i] >= priority[LEFT] && priority[i] >= priority[RIGHT])
+		{
+			states[i] = EATING;
+			priority[i] = 0;
+		}
+		else
+		{
+			/*if (priority[i] < priority[LEFT] && priority[LEFT] >= priority[RIGHT])
+				GetForks(LEFT);
+			else if (priority[i] < priority[RIGHT])
+				GetForks(RIGHT);
+			priority[i]++;*/
+		}
+	}
+}
+
+void GetForks(int i)
+{
+	states[i] = HUNGRY;
+	Test(i);
+	if (states[i] == EATING)
+	{
+		MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
+		eat(i);
+	}
+}
+
+void PutForks(int i)
+{
+	states[i] = THINKING;
+	think(i);
+	if (states[LEFT] == HUNGRY)
+		GetForks(LEFT);
+	if (states[RIGHT] == HUNGRY)
+		GetForks(RIGHT);
 }
 
 int main(int argc, char **argv)
@@ -94,9 +98,11 @@ int main(int argc, char **argv)
 		int fed_num = 0;
 		states = new TState[size - 1];
 		priority = new int[size - 1];
+		st_time = MPI_Wtime();
 		for (int i = 0; i < size - 1; i++)
 		{
 			states[i] = THINKING;
+			think(i);
 			priority[i] = 0;
 		}
 		while (fed_num != size - 1)
@@ -109,7 +115,7 @@ int main(int argc, char **argv)
 			{
 			case HUNGRY:
 				GetForks(i);
-				/*if (states[i] != EATING)
+				if (states[i] != EATING)
 					//MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
 				//else
 				{
@@ -126,19 +132,22 @@ int main(int argc, char **argv)
 							//MPI_Send(states + RIGHT, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
 					}
 					priority[i]++;
-				}*/
+				}
 				break;
 			case THINKING:
 				PutForks(i);
 				break;
 			case FED:
 				fed_num++;
+				printf("Philosopher %d is fed\n", i);
 			}
-			/*for (int j = 0; j < size - 1; j++)
+			for (int j = 0; j < size - 1; j++)
 				if (priority[j])
-					priority[j]++;*/
+					priority[j]++;
 			delete[] buf_recv;
 		}
+		en_time = MPI_Wtime();
+		printf("MPI version time: %f\n", en_time - st_time);
 		delete[] states;
 		delete[] priority;
 	}
@@ -147,14 +156,14 @@ int main(int argc, char **argv)
 		for (int j = 0; j < op_num; j++)
 		{
 			buf_send = new int[2];
-			think(rank);
+			//think(rank);
 			buf_send[0] = rank;
 			buf_send[1] = HUNGRY;
 			st_time = MPI_Wtime();
 			MPI_Send(buf_send, 2, MPI_INT, size-1, HUNGRY, MPI_COMM_WORLD);
 			MPI_Recv(buf_send + 1, 1, MPI_INT, size-1, EATING, MPI_COMM_WORLD, &status);
 			en_time = MPI_Wtime();
-			eat(rank, en_time - st_time);
+			//eat(rank, en_time - st_time);
 			buf_send[1] = THINKING;
 			MPI_Send(buf_send, 2, MPI_INT, size-1, THINKING, MPI_COMM_WORLD);
 			delete[] buf_send;
@@ -163,7 +172,7 @@ int main(int argc, char **argv)
 		buf_send[0] = rank;
 		buf_send[1] = FED;
 		MPI_Send(buf_send, 2, MPI_INT, size-1, FED, MPI_COMM_WORLD);
-		printf("Philosopher %d is fed\n", rank);
+		
 		delete[] buf_send;
 	}
 
