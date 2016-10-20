@@ -35,7 +35,7 @@ void GetForks(int i)
 	states[i] = HUNGRY;
 	Test(i);
 	if (states[i] == EATING)
-		MPI_Send(states + i + 1, 1, MPI_INT, i + 1, EATING, MPI_COMM_WORLD);
+		MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
 }
 
 void PutForks(int i)
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 
-	if (!rank)
+	if (rank == size - 1)
 	{
 		int fed_num = 0;
 		states = new TState[size - 1];
@@ -147,22 +147,23 @@ int main(int argc, char **argv)
 		for (int j = 0; j < op_num; j++)
 		{
 			buf_send = new int[2];
-			think(rank - 1);
-			buf_send[0] = rank - 1;
+			think(rank);
+			buf_send[0] = rank;
 			buf_send[1] = HUNGRY;
 			st_time = MPI_Wtime();
-			MPI_Send(buf_send, 2, MPI_INT, 0, HUNGRY, MPI_COMM_WORLD);
-			MPI_Recv(buf_send + 1, 1, MPI_INT, 0, EATING, MPI_COMM_WORLD, &status);
+			MPI_Send(buf_send, 2, MPI_INT, size-1, HUNGRY, MPI_COMM_WORLD);
+			MPI_Recv(buf_send + 1, 1, MPI_INT, size-1, EATING, MPI_COMM_WORLD, &status);
 			en_time = MPI_Wtime();
-			eat(rank - 1, en_time - st_time);
+			eat(rank, en_time - st_time);
 			buf_send[1] = THINKING;
-			MPI_Send(buf_send, 2, MPI_INT, 0, THINKING, MPI_COMM_WORLD);
+			MPI_Send(buf_send, 2, MPI_INT, size-1, THINKING, MPI_COMM_WORLD);
 			delete[] buf_send;
 		}
 		buf_send = new int[2];
-		buf_send[0] = rank - 1;
+		buf_send[0] = rank;
 		buf_send[1] = FED;
-		MPI_Send(buf_send, 2, MPI_INT, 0, FED, MPI_COMM_WORLD);
+		MPI_Send(buf_send, 2, MPI_INT, size-1, FED, MPI_COMM_WORLD);
+		printf("Philosopher %d is fed\n", rank);
 		delete[] buf_send;
 	}
 
