@@ -14,19 +14,19 @@ void Test(int i)
 {
 	if (states[i] == HUNGRY && states[LEFT] != EATING && states[RIGHT] != EATING)
 	{
-		if (priority[i] >= priority[LEFT] && priority[i] >= priority[RIGHT])
-		{
+		//if (priority[i] >= priority[LEFT] && priority[i] >= priority[RIGHT])
+		//{
 			states[i] = EATING;
 			priority[i] = 0;
-		}
-		else
-		{
+		//}
+		//else
+		//{
 			/*if (priority[i] < priority[LEFT] && priority[LEFT] >= priority[RIGHT])
 				GetForks(LEFT);
 			else if (priority[i] < priority[RIGHT])
 				GetForks(RIGHT);
 			priority[i]++;*/
-		}
+		//}
 	}
 }
 
@@ -35,7 +35,7 @@ void GetForks(int i)
 	states[i] = HUNGRY;
 	Test(i);
 	if (states[i] == EATING)
-		MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
+		MPI_Send(states + i + 1, 1, MPI_INT, i + 1, EATING, MPI_COMM_WORLD);
 }
 
 void PutForks(int i)
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 			states[i] = THINKING;
 			priority[i] = 0;
 		}
-		while (fed_num != size-1)
+		while (fed_num != size - 1)
 		{
 			int i;
 			buf_recv = new int[2];
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 			{
 			case HUNGRY:
 				GetForks(i);
-				if (states[i] != EATING)
+				/*if (states[i] != EATING)
 					//MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
 				//else
 				{
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 							//MPI_Send(states + RIGHT, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
 					}
 					priority[i]++;
-				}
+				}*/
 				break;
 			case THINKING:
 				PutForks(i);
@@ -134,15 +134,15 @@ int main(int argc, char **argv)
 			case FED:
 				fed_num++;
 			}
-			for (int j = 0; j < size - 1; j++)
+			/*for (int j = 0; j < size - 1; j++)
 				if (priority[j])
-					priority[j]++;
+					priority[j]++;*/
 			delete[] buf_recv;
 		}
 		delete[] states;
 		delete[] priority;
 	}
-	else
+	else 
 	{
 		for (int j = 0; j < op_num; j++)
 		{
