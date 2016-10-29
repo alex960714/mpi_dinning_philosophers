@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pp2_dining_philosophers", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pp2_mpi_version", "pp2_mpi_version\pp2_mpi_version.vcxproj", "{7DCF4A61-5761-40BF-A732-9A9E73E3A9FB}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dph_mpi_version2", "dph_mpi_version2\dph_mpi_version2.vcxproj", "{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{7DCF4A61-5761-40BF-A732-9A9E73E3A9FB}.Release|x64.Build.0 = Release|x64
 		{7DCF4A61-5761-40BF-A732-9A9E73E3A9FB}.Release|x86.ActiveCfg = Release|Win32
 		{7DCF4A61-5761-40BF-A732-9A9E73E3A9FB}.Release|x86.Build.0 = Release|Win32
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Debug|x64.ActiveCfg = Debug|x64
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Debug|x64.Build.0 = Debug|x64
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Debug|x86.ActiveCfg = Debug|Win32
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Debug|x86.Build.0 = Debug|Win32
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Release|x64.ActiveCfg = Release|x64
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Release|x64.Build.0 = Release|x64
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Release|x86.ActiveCfg = Release|Win32
+		{601E8E2E-91B7-4D71-91D1-5D71A299FE9C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
