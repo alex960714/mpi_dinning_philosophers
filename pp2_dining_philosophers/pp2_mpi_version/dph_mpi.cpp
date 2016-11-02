@@ -24,24 +24,33 @@ void print_states()
 	os<<" States: [";
 	for (int i = 0; i < ProcNum - 1; i++)
 	{
-		os << states[i] << ", ";
+		switch (states[i])
+		{
+		case THINKING: os<<"THINKING ";
+			break;
+		case EATING: os<<"EATING ";
+			break;
+		case HUNGRY: os<<"HUNGRY ";
+			break;
+		case FED: os<<"FED ";
+		}
 	}
 	os << "]" << endl;
 }
 
 void eat(int index, double hun_time)
 {
-	printf("Philosopher %d starts to eat. He was hungry for %f seconds\n", index, hun_time);
+	//printf("Philosopher %d starts to eat. He was hungry for %f seconds\n", index, hun_time);
 	Sleep(rand() % 1000);
-	printf("Philosopher %d has finished to eat\n", index);
+	//printf("Philosopher %d has finished to eat\n", index);
 }
 
 void think(int index)
 {
-	printf("Philosopher %d is thinking\n", index);
+	//printf("Philosopher %d is thinking\n", index);
 	//os << "Philosopher "<<index<<" is thinking" << endl;
 	Sleep(rand() % 1000);
-	printf("Philosopher %d is hungry\n", index);
+	//printf("Philosopher %d is hungry\n", index);
 	//os << "Philosopher "<<index<<" is hungry" << endl;
 }
 
@@ -138,22 +147,25 @@ int main(int argc, char **argv)
 			switch (buf_recv[1])
 			{
 			case HUNGRY:
+				states[i] = HUNGRY;
 				os << "Philosopher " << i << " is hungry. Time: "<< en_time-st_time << endl;
 				print_states();
 				GetForks(i);
 				break;
 			case THINKING:
+				states[i] = THINKING;
 				en_time = MPI_Wtime();
 				os << "Philosopher " << i << " is thinking. Time: "<<en_time-st_time << endl;
 				print_states();
 				PutForks(i);
 				break;
 			case FED:
+				states[i] = FED;
 				en_time = MPI_Wtime();
 				os << "Philosopher " << i << " is fed. Time: "<<en_time-st_time << endl;
 				print_states();
 				fed_num++;
-				printf("Philosopher %d is fed\n", i);
+				//printf("Philosopher %d is fed\n", i);
 			}
 			delete[] buf_recv;
 		}
@@ -188,7 +200,7 @@ int main(int argc, char **argv)
 	if (ProcRank == ProcNum - 1)
 	{
 		en_time = MPI_Wtime();
-		printf("MPI version time: %f\n", en_time - st_time);
+		os<<"MPI version time: "<<en_time - st_time<<endl;
 		delete[] states;
 		os.close();
 	}
