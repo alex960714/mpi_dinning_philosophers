@@ -12,6 +12,7 @@ int *priority;
 int ProcRank, ProcNum;
 double *wait_time = NULL;
 double st_time, en_time;
+double seq_time, par_time;
 ofstream os;
 
 MPI_Status status;
@@ -38,7 +39,7 @@ void print_states()
 	os << "]" << endl;
 }
 
-void eat(int index, double hun_time)
+void eat(int index)//, double hun_time)
 {
 	//printf("Philosopher %d starts to eat. He was hungry for %f seconds\n", index, hun_time);
 	Sleep(rand() % 1000);
@@ -110,7 +111,7 @@ int main(int argc, char **argv)
 	MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
 	MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
-	srand(time(NULL));
+	
 	if (ProcNum < 5)
 	{
 		printf("So few num of processes. There should be >=5 processes\n");
@@ -118,7 +119,47 @@ int main(int argc, char **argv)
 		//system("pause");
 		exit(0);
 	}
+	srand(1000);
+	if (ProcRank == ProcNum - 1)
+	{
+		os.open("events.txt");
+		os << "Sequential version: " << endl;
+		st_time = MPI_Wtime();
+		int buf_recv_seq;
+		for (int j = 0; j < op_num;j++)
+		{
+			for (int i = 0; i < ProcNum - 1; i++)
+			{
+				MPI_Recv(&buf_recv_seq, 1, MPI_INT, i, HUNGRY, MPI_COMM_WORLD, &status);
+				en_time = MPI_Wtime();
+				os << "Philosopher " << i << " is hungry. Time: " << en_time - st_time << endl;
 
+				MPI_Send(&buf_recv_seq, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
+				en_time = MPI_Wtime();
+				os << "Philosopher " << i << " starts to eat. Time: " << en_time - st_time << endl;
+
+				MPI_Recv(&buf_recv_seq, 1, MPI_INT, i, THINKING, MPI_COMM_WORLD, &status);
+				en_time = MPI_Wtime();
+				os << "Philosopher " << i << " is thinking. Time: " << en_time - st_time << endl;
+			}
+		}
+		seq_time = MPI_Wtime() - st_time;
+		
+	}
+	else
+	{
+		int buf_send_seq = ProcRank;
+		for (int j = 0; j < op_num; j++)
+		{
+			think(ProcRank);
+			MPI_Send(&ProcRank, 1, MPI_INT, ProcNum - 1, HUNGRY, MPI_COMM_WORLD);
+			MPI_Recv(&buf_send_seq, 1, MPI_INT, ProcNum - 1, EATING, MPI_COMM_WORLD, &status);
+			eat(ProcRank);
+			MPI_Send(&buf_send_seq, 1, MPI_INT, ProcNum - 1, THINKING, MPI_COMM_WORLD);
+		}
+	}
+
+	srand(1000);
 	if (ProcRank == ProcNum - 1)
 	{
 		fed_num = 0;
@@ -129,6 +170,7 @@ int main(int argc, char **argv)
 			states[i] = THINKING;
 			//think(i);
 		}
+		os << endl << "MPI version: " << endl;
 		st_time = MPI_Wtime();
 	}
 
@@ -136,7 +178,6 @@ int main(int argc, char **argv)
 	
 	if (ProcRank == ProcNum - 1)
 	{
-		os.open("events.txt");
 		while (fed_num != ProcNum - 1)
 		{
 			int i;
@@ -183,7 +224,7 @@ int main(int argc, char **argv)
 			MPI_Recv(buf_send + 1, 1, MPI_INT, ProcNum-1, EATING, MPI_COMM_WORLD, &status);
 			en_time = MPI_Wtime();
 			//MPI_Send(&en_time, 1, MPI_DOUBLE, size - 1, EATING, MPI_COMM_WORLD);
-			eat(ProcRank, en_time - st_time);
+			eat(ProcRank);//, en_time - st_time);
 			buf_send[1] = THINKING;
 			MPI_Send(buf_send, 2, MPI_INT, ProcNum-1, THINKING, MPI_COMM_WORLD);
 			delete[] buf_send;
@@ -199,10 +240,13 @@ int main(int argc, char **argv)
 	MPI_Barrier(MPI_COMM_WORLD);
 	if (ProcRank == ProcNum - 1)
 	{
-		en_time = MPI_Wtime();
-		os<<"MPI version time: "<<en_time - st_time<<endl;
+		par_time = MPI_Wtime() - st_time;
+		os << endl << "Sequential version time: " << seq_time << endl;
+		os<<"MPI version time: "<< par_time << endl;
+		os << "Speedup: " << seq_time / par_time << endl;
 		delete[] states;
 		os.close();
+		printf("Results in ../Debug/events.txt\n");
 	}
 	
 	MPI_Finalize();
