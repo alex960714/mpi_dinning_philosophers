@@ -2,17 +2,32 @@
 #include <windows.h>
 #include <time.h>
 #include "mpi.h"
-
-#define LEFT (i+size-2)%(size-1)
-#define RIGHT (i+1)%(size-1)
+#include <fstream>
+#include <iostream>
+using namespace std;
 
 enum TState { THINKING, EATING, HUNGRY, FED };
 TState *states = NULL;
 int *priority;
-int rank, size;
+int ProcRank, ProcNum;
 double *wait_time = NULL;
+double st_time, en_time;
+ofstream os;
 
 MPI_Status status;
+
+int left(int i) { return (i + ProcNum-2) % (ProcNum-1); }
+int right(int i) { return (i + 1) % (ProcNum-1); }
+
+void print_states()
+{
+	os<<" States: [";
+	for (int i = 0; i < ProcNum - 1; i++)
+	{
+		os << states[i] << ", ";
+	}
+	os << "]" << endl;
+}
 
 void eat(int index, double hun_time)
 {
@@ -24,13 +39,15 @@ void eat(int index, double hun_time)
 void think(int index)
 {
 	printf("Philosopher %d is thinking\n", index);
+	//os << "Philosopher "<<index<<" is thinking" << endl;
 	Sleep(rand() % 1000);
 	printf("Philosopher %d is hungry\n", index);
+	//os << "Philosopher "<<index<<" is hungry" << endl;
 }
 
 void Test(int i)
 {
-	if (states[i] == HUNGRY && states[LEFT] != EATING && states[RIGHT] != EATING)
+	if (states[i] == HUNGRY && states[left(i)] != EATING && states[right(i)] != EATING)
 	{
 			states[i] = EATING;
 	}
@@ -39,10 +56,14 @@ void Test(int i)
 void GetForks(int i)
 {
 	states[i] = HUNGRY;
+	//os << "Philosopher " << i << " is hungry" << endl;
 	Test(i);
 	if (states[i] == EATING)
 	{
 		MPI_Send(states + i, 1, MPI_INT, i, EATING, MPI_COMM_WORLD);
+		en_time = MPI_Wtime();
+		os << "Philosopher " << i << " starts to eat. Time: " << en_time - st_time << endl;
+		print_states();
 		//MPI_Recv(wait_time + i, 1, MPI_DOUBLE, i, EATING, MPI_COMM_WORLD, &status);
 		//eat(i , wait_time[i]);
 	}
@@ -52,18 +73,19 @@ void PutForks(int i)
 {
 	states[i] = THINKING;
 	//think(i);
-	if (states[LEFT] == HUNGRY)
-		GetForks(LEFT);
-	if (states[RIGHT] == HUNGRY)
-		GetForks(RIGHT);
+	if (states[left(i)] == HUNGRY)
+		GetForks(left(i));
+	if (states[right(i)] == HUNGRY)
+		GetForks(right(i));
 }
+
+
 
 int main(int argc, char **argv)
 {
 	int *buf_send, *buf_recv;
 	int op_num;
 	int fed_num;
-	double st_time, en_time;
 	
 	
 	if (argc < 2)
@@ -76,11 +98,11 @@ int main(int argc, char **argv)
 
 	MPI_Init(&argc, &argv);
 
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
+	MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
 	srand(time(NULL));
-	if (size < 5)
+	if (ProcNum < 5)
 	{
 		printf("So few num of processes. There should be >=5 processes\n");
 		MPI_Finalize();
@@ -88,12 +110,12 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 
-	if (rank == size - 1)
+	if (ProcRank == ProcNum - 1)
 	{
 		fed_num = 0;
-		states = new TState[size - 1];
-		wait_time = new double[size - 1];
-		for (int i = 0; i < size - 1; i++)
+		states = new TState[ProcNum - 1];
+		wait_time = new double[ProcNum - 1];
+		for (int i = 0; i < ProcNum - 1; i++)
 		{
 			states[i] = THINKING;
 			//think(i);
@@ -102,24 +124,34 @@ int main(int argc, char **argv)
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
-
-	if (rank == size - 1)
+	
+	if (ProcRank == ProcNum - 1)
 	{
-		while (fed_num != size - 1)
+		os.open("events.txt");
+		while (fed_num != ProcNum - 1)
 		{
 			int i;
 			buf_recv = new int[2];
 			MPI_Recv(buf_recv, 2, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+			en_time = MPI_Wtime();
 			i = buf_recv[0];
 			switch (buf_recv[1])
 			{
 			case HUNGRY:
+				os << "Philosopher " << i << " is hungry. Time: "<< en_time-st_time << endl;
+				print_states();
 				GetForks(i);
 				break;
 			case THINKING:
+				en_time = MPI_Wtime();
+				os << "Philosopher " << i << " is thinking. Time: "<<en_time-st_time << endl;
+				print_states();
 				PutForks(i);
 				break;
 			case FED:
+				en_time = MPI_Wtime();
+				os << "Philosopher " << i << " is fed. Time: "<<en_time-st_time << endl;
+				print_states();
 				fed_num++;
 				printf("Philosopher %d is fed\n", i);
 			}
@@ -131,35 +163,36 @@ int main(int argc, char **argv)
 		for (int j = 0; j < op_num; j++)
 		{
 			buf_send = new int[2];
-			think(rank);
-			buf_send[0] = rank;
+			think(ProcRank);
+			buf_send[0] = ProcRank;
 			buf_send[1] = HUNGRY;
 			st_time = MPI_Wtime();
-			MPI_Send(buf_send, 2, MPI_INT, size-1, HUNGRY, MPI_COMM_WORLD);
-			MPI_Recv(buf_send + 1, 1, MPI_INT, size-1, EATING, MPI_COMM_WORLD, &status);
+			MPI_Send(buf_send, 2, MPI_INT, ProcNum-1, HUNGRY, MPI_COMM_WORLD);
+			MPI_Recv(buf_send + 1, 1, MPI_INT, ProcNum-1, EATING, MPI_COMM_WORLD, &status);
 			en_time = MPI_Wtime();
 			//MPI_Send(&en_time, 1, MPI_DOUBLE, size - 1, EATING, MPI_COMM_WORLD);
-			eat(rank, en_time - st_time);
+			eat(ProcRank, en_time - st_time);
 			buf_send[1] = THINKING;
-			MPI_Send(buf_send, 2, MPI_INT, size-1, THINKING, MPI_COMM_WORLD);
+			MPI_Send(buf_send, 2, MPI_INT, ProcNum-1, THINKING, MPI_COMM_WORLD);
 			delete[] buf_send;
 		}
 		buf_send = new int[2];
-		buf_send[0] = rank;
+		buf_send[0] = ProcRank;
 		buf_send[1] = FED;
-		MPI_Send(buf_send, 2, MPI_INT, size-1, FED, MPI_COMM_WORLD);
+		MPI_Send(buf_send, 2, MPI_INT, ProcNum-1, FED, MPI_COMM_WORLD);
 		
 		delete[] buf_send;
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	if (rank == size - 1)
+	if (ProcRank == ProcNum - 1)
 	{
 		en_time = MPI_Wtime();
 		printf("MPI version time: %f\n", en_time - st_time);
 		delete[] states;
+		os.close();
 	}
-
+	
 	MPI_Finalize();
 
 	return 0;
